@@ -89,4 +89,5 @@ jobs:
       - name: Create GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
         run: gh release create "${{ github.ref_name }}" assets/* --verify-tag --generate-notes --title "ChatNest ${{ github.ref_name }}"
