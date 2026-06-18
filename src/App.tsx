@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 
-type Overview = Awaited<ReturnType<typeof window.chatnest.getOverview>>
+type ChatNestBridge = NonNullable<typeof window.chatnest>
+type Overview = Awaited<ReturnType<ChatNestBridge['getOverview']>>
 type IconName = 'grid' | 'settings' | 'help' | 'refresh' | 'play' | 'focus' | 'power' | 'folder' | 'check' | 'warning' | 'wechat'
 
 function Icon({ name, size = 20 }: { name: IconName; size?: number }) {
@@ -21,6 +22,7 @@ function Icon({ name, size = 20 }: { name: IconName; size?: number }) {
 }
 
 function App() {
+  const chatnest = window.chatnest!
   const [overview, setOverview] = useState<Overview | null>(null)
   const [busy, setBusy] = useState(false)
   const [toast, setToast] = useState<{ text: string; error?: boolean } | null>(null)
@@ -28,13 +30,13 @@ function App() {
   const [page, setPage] = useState<'home' | 'settings' | 'help'>('home')
 
   const refresh = useCallback(async () => {
-    const data = overview ? { ...overview, status: await window.chatnest.refreshStatus() } : await window.chatnest.getOverview()
+    const data = overview ? { ...overview, status: await chatnest.refreshStatus() } : await chatnest.getOverview()
     setOverview(data)
   }, [overview])
 
-  useEffect(() => { window.chatnest.getOverview().then(setOverview) }, [])
+  useEffect(() => { chatnest.getOverview().then(setOverview) }, [])
   useEffect(() => {
-    const timer = setInterval(() => window.chatnest.refreshStatus().then((status) => setOverview((v) => v ? { ...v, status } : v)), 3500)
+    const timer = setInterval(() => chatnest.refreshStatus().then((status) => setOverview((v) => v ? { ...v, status } : v)), 3500)
     return () => clearInterval(timer)
   }, [])
 
@@ -53,7 +55,7 @@ function App() {
   }
 
   const choose = async () => {
-    const result = await window.chatnest.chooseExecutable()
+    const result = await chatnest.chooseExecutable()
     if (result.ok) { await refresh(); notify('微信位置已更新') }
   }
 
