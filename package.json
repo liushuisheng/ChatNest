@@ -1,6 +1,6 @@
 {
   "name": "chatnest",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "author": "ChatNest Team",
   "description": "ChatNest - a calm desktop launcher for multiple WeChat sessions",
@@ -37,10 +37,24 @@
     "appId": "com.chatnest.desktop",
     "productName": "ChatNest",
     "artifactName": "${productName}-${version}-${os}-${arch}.${ext}",
-    "files": ["dist/**/*", "electron/**/*", "package.json"],
-    "directories": { "output": "release" },
-    "win": { "target": "nsis" },
-    "mac": { "target": "dmg", "category": "public.app-category.productivity" },
-    "nsis": { "oneClick": false, "allowToChangeInstallationDirectory": true }
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "package.json"
+    ],
+    "directories": {
+      "output": "release"
+    },
+    "win": {
+      "target": "nsis"
+    },
+    "mac": {
+      "target": "dmg",
+      "category": "public.app-category.productivity"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
   }
 }
