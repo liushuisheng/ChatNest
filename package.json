@@ -47,6 +47,10 @@
     "directories": {
       "output": "release"
     },
+    "extraResources": [{
+      "from": "electron/focus-wechat.ps1",
+      "to": "focus-wechat.ps1"
+    }],
     "win": {
       "icon": "build/icon.ico",
       "target": "nsis"

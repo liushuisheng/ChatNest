@@ -130,20 +130,13 @@ async function launchPair(restart) {
 
 async function focusWeChat() {
   try {
+    if (await processCount() === 0) return { ok: false, message: '当前没有正在运行的微信实例。' }
     if (process.platform === 'darwin') {
       await exec('/usr/bin/osascript', ['-e', 'tell application "WeChat" to activate'])
     } else {
-      const script = "$p=Get-Process -Name WeChat,Weixin -ErrorAction SilentlyContinue | Where-Object { $_.MainWindowHandle -ne 0 } | Select-Object -First 1; if($p){try{$ok=(New-Object -ComObject WScript.Shell).AppActivate($p.Id); if($ok){'ACTIVATED'}else{'HIDDEN'}}catch{'HIDDEN'}}else{'HIDDEN'}; exit 0"
-      const result = await exec('powershell.exe', ['-NoProfile', '-Command', script])
-      if (result !== 'ACTIVATED') {
-        // Weixin destroys its visible top-level window when minimized to the
-        // tray. Starting the executable again asks the existing root process
-        // to recreate/restore that window through Weixin's own IPC channel.
-        const target = resolveExecutable()
-        if (!target.path) return { ok: false, message: '未找到微信程序，无法恢复窗口。' }
-        startDetached(target.path)
-        await wait(900)
-      }
+      const helper = app.isPackaged ? path.join(process.resourcesPath, 'focus-wechat.ps1') : path.join(__dirname, 'focus-wechat.ps1')
+      const result = await exec('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', helper])
+      if (result !== 'ACTIVATED') return { ok: false, message: result === 'NOT_FOUND' ? '当前没有正在运行的微信实例。' : '未能恢复微信窗口，请从微信托盘图标打开。' }
     }
     return { ok: true }
   } catch (error) { return { ok: false, message: error.message } }
