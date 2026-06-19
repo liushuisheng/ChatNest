@@ -13,8 +13,26 @@ const apiBase = `https://gitee.com/api/v5/repos/${encodeURIComponent(owner)}/${e
 if (!token) throw new Error('GITEE_TOKEN is required')
 if (!tag) throw new Error('RELEASE_TAG is required')
 
+const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
+
+async function request(url, options = {}) {
+  let lastError
+  for (let attempt = 1; attempt <= 5; attempt += 1) {
+    try {
+      return await fetch(url, options)
+    } catch (error) {
+      lastError = error
+      if (attempt < 5) {
+        console.warn(`Gitee connection failed; retrying (${attempt}/5)`)
+        await delay(attempt * 5000)
+      }
+    }
+  }
+  throw lastError
+}
+
 async function api(url, options = {}) {
-  const response = await fetch(url, options)
+  const response = await request(url, options)
   if (!response.ok) {
     const message = (await response.text()).slice(0, 1000)
     throw new Error(`Gitee API ${response.status}: ${message}`)
@@ -23,7 +41,7 @@ async function api(url, options = {}) {
 }
 
 async function findOrCreateRelease() {
-  const response = await fetch(`${apiBase}/releases/tags/${encodeURIComponent(tag)}`)
+  const response = await request(`${apiBase}/releases/tags/${encodeURIComponent(tag)}`)
   if (response.ok) {
     const existingRelease = await response.json()
     if (existingRelease?.id) return existingRelease
