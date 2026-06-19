@@ -68,7 +68,7 @@ function LandingPage() {
     <nav className="site-nav">
       <a className="site-brand" href="#top" aria-label="ChatNest 首页"><Mark/><strong>ChatNest</strong></a>
       <div className="nav-links"><a href="#features">功能</a><a href="#safety">安全</a><a href="https://github.com/liushuisheng/ChatNest" target="_blank" rel="noreferrer">GitHub</a></div>
-      <button onClick={scrollToDownloads}>免费下载 · {totalDownloadCount} 次 <Arrow/></button>
+      <button onClick={scrollToDownloads}>免费下载 <Arrow/></button>
     </nav>
 
     <main id="top">
@@ -78,7 +78,7 @@ function LandingPage() {
           <div className="version-chip"><span/>ChatNest v{version} 已发布</div>
           <h1>两个微信，<br/><em>各得其所。</em></h1>
           <p>一个留给工作，一个留给生活。ChatNest 帮你在一台电脑上轻松开启两个微信实例，清楚、安静、不打扰。</p>
-          <div className="landing-actions"><button className="download-primary" onClick={scrollToDownloads}><Arrow/>下载 ChatNest</button><a href="#features">了解它如何工作 <span>→</span></a></div>
+          <div className="landing-actions"><div className="download-action"><button className="download-primary" onClick={scrollToDownloads}><Arrow/>下载 ChatNest</button><span>累计下载 {totalDownloadCount} 次</span></div><a href="#features">了解它如何工作 <span>→</span></a></div>
           <div className="hero-meta"><span>✓ 免费使用</span><span>✓ 不读取聊天内容</span><span>✓ Windows 与 macOS</span></div>
         </div>
 
