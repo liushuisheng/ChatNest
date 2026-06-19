@@ -18,26 +18,31 @@
     "dist:mac:arm64": "npm run build && electron-builder --mac --arm64"
   },
   "dependencies": {
-    "@vitejs/plugin-react": "latest",
-    "electron-updater": "^6.8.9",
-    "react": "latest",
-    "react-dom": "latest",
-    "typescript": "latest",
-    "vite": "latest"
+    "electron-updater": "^6.8.9"
   },
   "devDependencies": {
     "@types/node": "latest",
     "@types/react": "latest",
     "@types/react-dom": "latest",
+    "@vitejs/plugin-react": "latest",
     "concurrently": "latest",
     "electron": "latest",
     "electron-builder": "latest",
+    "react": "latest",
+    "react-dom": "latest",
+    "typescript": "latest",
+    "vite": "latest",
     "wait-on": "latest"
   },
   "build": {
     "appId": "com.chatnest.desktop",
     "productName": "ChatNest",
     "artifactName": "${productName}-${version}-${os}-${arch}.${ext}",
+    "compression": "maximum",
+    "electronLanguages": [
+      "en-US",
+      "zh-CN"
+    ],
     "files": [
       "dist/**/*",
       "electron/**/*",

@@ -69,6 +69,9 @@ jobs:
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
         run: npx electron-builder --mac --${{ matrix.arch }} --config.publish.channel=${{ matrix.channel }} --publish never
 
+      - name: Enforce Gitee attachment limit
+        run: node .github/scripts/check-release-size.mjs release
+
       - name: Upload installers
         uses: actions/upload-artifact@v4
         with:
