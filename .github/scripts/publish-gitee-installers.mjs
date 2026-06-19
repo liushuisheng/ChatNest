@@ -80,6 +80,25 @@ function uploadFile(releaseId, filePath) {
   })
 }
 
+function verifyDownload(name, downloadUrl) {
+  return new Promise((resolve, reject) => {
+    const nullDevice = process.platform === 'win32' ? 'NUL' : '/dev/null'
+    const child = spawn('curl', [
+      '--head', '--location', '--silent', '--show-error',
+      '--max-time', '60', '--output', nullDevice,
+      '--write-out', '%{http_code}', downloadUrl,
+    ])
+    let output = ''
+    child.stdout.on('data', (chunk) => { output += chunk })
+    child.stderr.on('data', (chunk) => { output += chunk })
+    child.on('error', reject)
+    child.on('close', (code) => {
+      if (code === 0 && output.trim().endsWith('200')) resolve()
+      else reject(new Error(`Gitee download verification failed for ${name}: ${output.slice(-1000)}`))
+    })
+  })
+}
+
 const release = await findOrCreateRelease()
 const existing = await api(`${apiBase}/releases/${release.id}/attach_files`)
 const existingNames = new Set(existing.map((item) => item.name))
@@ -103,15 +122,25 @@ for (const { name, size } of installers.sort((left, right) => left.size - right.
 }
 
 let indexed = false
+let indexedAttachments = []
 for (let attempt = 1; attempt <= 24; attempt += 1) {
   const attachments = await api(`${apiBase}/releases/${release.id}/attach_files`)
   const byName = new Map(attachments.map((item) => [item.name, item]))
   indexed = installers.every(({ name, size }) => Number(byName.get(name)?.size) === size)
-  if (indexed) break
+  if (indexed) {
+    indexedAttachments = attachments
+    break
+  }
   console.log(`Waiting for Gitee to index all installers (${attempt}/24)`)
   await delay(5000)
 }
 
 if (!indexed) throw new Error('Gitee did not expose all 4 installers after upload')
+
+for (const { name } of installers) {
+  const attachment = indexedAttachments.find((item) => item.name === name)
+  await verifyDownload(name, attachment.browser_download_url)
+  console.log(`Verified Gitee download: ${name}`)
+}
 
 console.log(`Gitee release is ready: https://gitee.com/${owner}/${repo}/releases/tag/${tag}`)
