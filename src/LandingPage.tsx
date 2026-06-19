@@ -26,7 +26,7 @@ function Arrow() {
 }
 
 function LandingPage() {
-  const [downloadCounts, setDownloadCounts] = useState<Record<string, number>>({})
+  const [totalDownloadCount, setTotalDownloadCount] = useState(99)
 
   useEffect(() => {
     if (window.location.hostname !== 'liushuisheng.github.io') return
@@ -51,8 +51,9 @@ function LandingPage() {
         if (!response.ok) throw new Error(`GitHub API returned ${response.status}`)
         return response.json() as Promise<{ assets?: Array<{ name: string; download_count: number }> }>
       })
-      .then((release) => setDownloadCounts(Object.fromEntries(
-        (release.assets ?? []).map((asset) => [asset.name, Math.max(99, asset.download_count)]),
+      .then((release) => setTotalDownloadCount(Math.max(
+        99,
+        (release.assets ?? []).reduce((total, asset) => total + asset.download_count, 0),
       )))
       .catch((error: unknown) => {
         if (!(error instanceof DOMException && error.name === 'AbortError')) console.warn('Unable to load download counts')
@@ -67,7 +68,7 @@ function LandingPage() {
     <nav className="site-nav">
       <a className="site-brand" href="#top" aria-label="ChatNest 首页"><Mark/><strong>ChatNest</strong></a>
       <div className="nav-links"><a href="#features">功能</a><a href="#safety">安全</a><a href="https://github.com/liushuisheng/ChatNest" target="_blank" rel="noreferrer">GitHub</a></div>
-      <button onClick={scrollToDownloads}>免费下载 <Arrow/></button>
+      <button onClick={scrollToDownloads}>免费下载 · {totalDownloadCount} 次 <Arrow/></button>
     </nav>
 
     <main id="top">
@@ -103,7 +104,7 @@ function LandingPage() {
         <div className="download-grid">
           {downloads.map((item) => <a className="download-card" href={`${releaseBase}/${item.file}`} key={item.file}>
             <span className={`platform-icon ${item.icon}`}><PlatformIcon name={item.icon}/></span>
-            <div><small>{item.platform}</small><h3>{item.arch}</h3><p>{item.note}</p><b className="download-count">{downloadCounts[item.file] ?? 99} 次下载</b></div><span className="card-arrow"><Arrow/></span>
+            <div><small>{item.platform}</small><h3>{item.arch}</h3><p>{item.note}</p></div><span className="card-arrow"><Arrow/></span>
           </a>)}
         </div>
         <p className="release-note">不确定该选哪个？Windows 用户通常选择 x64，M 系列 Mac 请选择 Apple 芯片。<a href="https://github.com/liushuisheng/ChatNest/releases/latest" target="_blank" rel="noreferrer">查看全部发布文件 →</a></p>
