@@ -60,6 +60,18 @@ async function findOrCreateRelease() {
   return api(`${apiBase}/releases`, { method: 'POST', body })
 }
 
+if (process.env.GITEE_DELETE_RELEASE === 'true') {
+  const response = await request(`${apiBase}/releases/tags/${encodeURIComponent(tag)}`)
+  const releaseToDelete = response.ok ? await response.json() : null
+  if (releaseToDelete?.id) {
+    await api(`${apiBase}/releases/${releaseToDelete.id}?access_token=${encodeURIComponent(token)}`, { method: 'DELETE' })
+    console.log(`Deleted incomplete Gitee release: ${tag}`)
+  } else {
+    console.log(`Gitee release does not exist: ${tag}`)
+  }
+  process.exit(0)
+}
+
 const release = await findOrCreateRelease()
 const existing = await api(`${apiBase}/releases/${release.id}/attach_files`)
 const existingNames = new Set(existing.map((item) => item.name))

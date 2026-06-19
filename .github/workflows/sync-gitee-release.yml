@@ -7,6 +7,11 @@ on:
         description: Release tag to copy from GitHub
         required: true
         default: v0.2.4
+      cleanup:
+        description: Delete the incomplete Gitee release instead of uploading
+        required: true
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -17,6 +22,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Download GitHub release assets
+        if: inputs.cleanup != true
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
@@ -28,4 +34,5 @@ jobs:
           GITEE_REPO: ChatNest
           RELEASE_TAG: ${{ inputs.tag }}
           TARGET_COMMITISH: ${{ inputs.tag }}
+          GITEE_DELETE_RELEASE: ${{ inputs.cleanup }}
         run: node .github/scripts/publish-gitee-release.mjs assets
