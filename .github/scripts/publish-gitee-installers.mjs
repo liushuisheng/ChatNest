@@ -102,4 +102,16 @@ for (const { name, size } of installers.sort((left, right) => left.size - right.
   await uploadFile(release.id, path.join(assetDirectory, name))
 }
 
+let indexed = false
+for (let attempt = 1; attempt <= 24; attempt += 1) {
+  const attachments = await api(`${apiBase}/releases/${release.id}/attach_files`)
+  const byName = new Map(attachments.map((item) => [item.name, item]))
+  indexed = installers.every(({ name, size }) => Number(byName.get(name)?.size) === size)
+  if (indexed) break
+  console.log(`Waiting for Gitee to index all installers (${attempt}/24)`)
+  await delay(5000)
+}
+
+if (!indexed) throw new Error('Gitee did not expose all 4 installers after upload')
+
 console.log(`Gitee release is ready: https://gitee.com/${owner}/${repo}/releases/tag/${tag}`)
