@@ -10,5 +10,7 @@ contextBridge.exposeInMainWorld('chatnest', {
   chooseExecutable: () => ipcRenderer.invoke('wechat:choose-executable'),
   resetExecutable: () => ipcRenderer.invoke('wechat:reset-executable'),
   openExternal: (url) => ipcRenderer.invoke('app:open-external', url),
+  prepareUpdate: () => ipcRenderer.invoke('app:prepare-update'),
+  installUpdate: () => ipcRenderer.invoke('app:install-update'),
   platform: process.platform,
 })

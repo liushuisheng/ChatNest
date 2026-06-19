@@ -35,6 +35,7 @@ h1 { margin:0; font-size:29px; line-height:1.25; letter-spacing:-.8px; color:#18
 button.primary,button.secondary { border-radius:11px; height:42px; padding:0 18px; display:inline-flex; align-items:center; justify-content:center; gap:8px; cursor:pointer; border:0; font-weight:600; font-size:13px; transition:.2s; }
 button.primary { color:#fff; background:#229a54; box-shadow:0 7px 18px #229a5433; }button.primary:hover:not(:disabled){background:#178548;transform:translateY(-1px)}button.primary:disabled{opacity:.55;cursor:not-allowed}
 button.secondary { color:#486056; background:#fff; border:1px solid #dfe6e1; }button.secondary:hover{border-color:#9eb8a8;color:#207b49}
+button.secondary:disabled{opacity:.6;cursor:wait}
 .nest-visual { width:230px; height:180px; position:relative; margin-right:4%; }
 .orbit { position:absolute; border:1px dashed #71b98d66; border-radius:50%; }.orbit.one{width:175px;height:115px;left:26px;top:30px;transform:rotate(-15deg)}.orbit.two{width:180px;height:110px;left:25px;top:34px;transform:rotate(34deg)}
 .nest-center { position:absolute; left:92px; top:66px; width:55px; height:55px; border-radius:18px; background:#fff; color:#24a75a; display:grid; place-items:center; box-shadow:0 12px 30px #275f3b22; }

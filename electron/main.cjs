@@ -1,9 +1,18 @@
 const { app, BrowserWindow, dialog, ipcMain, shell, Menu } = require('electron')
+const { autoUpdater } = require('electron-updater')
 const { execFile, spawn } = require('node:child_process')
 const fs = require('node:fs')
 const path = require('node:path')
 
 let mainWindow
+let updatePreparation
+let updateReadyVersion = ''
+
+autoUpdater.autoDownload = false
+autoUpdater.autoInstallOnAppQuit = true
+autoUpdater.channel = process.arch === 'arm64' ? 'latest-arm64' : 'latest'
+autoUpdater.allowDowngrade = false
+autoUpdater.on('error', (error) => console.error('Auto update error:', error.message))
 
 const exec = (file, args = [], options = {}) => new Promise((resolve, reject) => {
   execFile(file, args, { windowsHide: true, timeout: 8000, ...options }, (error, stdout, stderr) => {
@@ -139,6 +148,34 @@ async function focusWeChat() {
   } catch (error) { return { ok: false, message: error.message } }
 }
 
+async function prepareUpdate() {
+  if (!app.isPackaged) {
+    return { ok: true, state: 'development', version: app.getVersion(), message: '开发模式不检查更新，请在安装版中使用。' }
+  }
+  if (updateReadyVersion) {
+    return { ok: true, state: 'ready', version: updateReadyVersion, message: `ChatNest v${updateReadyVersion} 已下载完成。` }
+  }
+  if (updatePreparation) return updatePreparation
+
+  updatePreparation = (async () => {
+    try {
+      const result = await autoUpdater.checkForUpdates()
+      if (!result?.isUpdateAvailable) {
+        return { ok: true, state: 'current', version: app.getVersion(), message: '当前已是最新版本。' }
+      }
+      await autoUpdater.downloadUpdate(result.cancellationToken)
+      updateReadyVersion = result.updateInfo.version
+      return { ok: true, state: 'ready', version: updateReadyVersion, message: `ChatNest v${updateReadyVersion} 已下载完成。` }
+    } catch (error) {
+      return { ok: false, state: 'error', version: app.getVersion(), message: `检查更新失败：${error.message}` }
+    } finally {
+      updatePreparation = null
+    }
+  })()
+
+  return updatePreparation
+}
+
 function createWindow() {
   const appIcon = path.join(__dirname, '..', 'build', 'icon.png')
   mainWindow = new BrowserWindow({
@@ -211,4 +248,10 @@ ipcMain.handle('wechat:reset-executable', async () => {
 })
 ipcMain.handle('app:open-external', (_, url) => {
   if (typeof url === 'string' && /^https:\/\//.test(url)) return shell.openExternal(url)
+})
+ipcMain.handle('app:prepare-update', prepareUpdate)
+ipcMain.handle('app:install-update', () => {
+  if (!updateReadyVersion) return { ok: false, message: '更新尚未下载完成。' }
+  setImmediate(() => autoUpdater.quitAndInstall(true, true))
+  return { ok: true }
 })

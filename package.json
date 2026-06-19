@@ -19,10 +19,11 @@
   },
   "dependencies": {
     "@vitejs/plugin-react": "latest",
-    "vite": "latest",
-    "typescript": "latest",
+    "electron-updater": "^6.8.9",
     "react": "latest",
-    "react-dom": "latest"
+    "react-dom": "latest",
+    "typescript": "latest",
+    "vite": "latest"
   },
   "devDependencies": {
     "@types/node": "latest",
@@ -52,9 +53,14 @@
     },
     "mac": {
       "icon": "build/icon.icns",
-      "target": "dmg",
+      "target": ["dmg", "zip"],
       "category": "public.app-category.productivity"
     },
+    "publish": [{
+      "provider": "github",
+      "owner": "liushuisheng",
+      "repo": "ChatNest"
+    }],
     "nsis": {
       "installerIcon": "build/icon.ico",
       "uninstallerIcon": "build/icon.ico",
