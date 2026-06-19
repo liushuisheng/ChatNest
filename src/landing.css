@@ -7,3 +7,32 @@ body:has(.landing-page){min-width:0;overflow:auto;background:#f7f8f3}
 @media(max-width:900px){.nav-links{display:none}.landing-hero{grid-template-columns:1fr;padding:65px 28px 80px;text-align:center}.landing-hero-copy{padding:0}.landing-hero-copy>p{margin:auto}.landing-actions,.hero-meta{justify-content:center}.product-scene{margin:30px auto 0;width:min(100%,620px)}.app-preview{right:50%;transform:translateX(50%) scale(.9);transform-origin:center}.feature-strip{margin:0 28px 80px;grid-template-columns:1fr}.feature-strip article+article{border-left:0;border-top:1px solid #dce2dc}.feature-strip article{padding:24px 10px}.privacy-banner{margin:70px 28px}.landing-page footer{margin:0 28px}.landing-hero h1{letter-spacing:-3px}}
 @media(max-width:620px){.site-nav{height:70px;padding:0 18px}.site-nav>button{height:39px}.landing-hero{padding-top:48px}.landing-hero h1{font-size:49px;letter-spacing:-2.8px}.landing-hero-copy>p{font-size:14px}.landing-actions{flex-direction:column;gap:17px}.hero-meta{display:none}.product-scene{height:360px;margin-top:30px}.app-preview{width:560px;transform:translateX(50%) scale(.61);top:0}.scene-backdrop{width:300px;height:300px;right:50%;transform:translateX(50%)}.floating-card{transform:scale(.82)}.work-card{left:-10px;top:18px}.life-card{right:-8px;bottom:12px}.download-section{padding-top:75px}.download-grid{grid-template-columns:1fr}.privacy-banner{padding:35px 28px;align-items:flex-start;flex-direction:column}.privacy-banner>div:first-child{width:65px;height:65px}.landing-page footer{grid-template-columns:1fr;gap:12px;text-align:center}.landing-page footer .site-brand,.landing-page footer>div{justify-content:center}.landing-page footer>p{margin:0}.section-heading h2{font-size:29px}}
 @media(prefers-reduced-motion:reduce){.landing-page *{scroll-behavior:auto!important;transition:none!important}}
+
+/* Readability scale: keep the miniature product mockup untouched. */
+.landing-page .site-brand strong { font-size:21px; }
+.landing-page .nav-links a,
+.landing-page .site-nav>button { font-size:15px; }
+.landing-page .version-chip { padding:8px 14px; font-size:13px; }
+.landing-page .landing-hero-copy>p { max-width:560px; font-size:18px; line-height:1.85; }
+.landing-page .download-primary { height:54px; padding-inline:25px; font-size:16px; }
+.landing-page .landing-actions>a { font-size:15px; }
+.landing-page .hero-meta { gap:20px; font-size:12px; }
+.landing-page .feature-strip article>span { font-size:12px; }
+.landing-page .feature-strip h2 { font-size:18px; }
+.landing-page .feature-strip p { font-size:14px; }
+.landing-page .section-heading>span { font-size:11px; }
+.landing-page .section-heading p { color:#9ab5a7; font-size:14px; }
+.landing-page .download-card small { color:#81b098; font-size:11px; }
+.landing-page .download-card h3 { font-size:19px; }
+.landing-page .download-card p { color:#9bb3a7; font-size:13px; }
+.landing-page .release-note { color:#88a293; font-size:12px; }
+.landing-page .privacy-banner span { font-size:11px; }
+.landing-page .privacy-banner h2 { font-size:28px; }
+.landing-page .privacy-banner p { max-width:760px; color:#5f786c; font-size:14px; }
+.landing-page footer>p,
+.landing-page footer>div { color:#7c8981; font-size:12px; }
+
+@media(max-width:620px){
+  .landing-page .site-nav>button { font-size:14px; }
+  .landing-page .landing-hero-copy>p { font-size:16px; }
+}
