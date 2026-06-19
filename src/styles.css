@@ -10,10 +10,10 @@ button { font:inherit; }
 .brand-mark .icon { overflow:visible; }
 .brand strong { display:block; color:#fff; font-size:17px; letter-spacing:.2px; }
 .brand span { display:block; margin-top:2px; color:#94aaa0; font-size:11px; }
-nav { display:flex; flex-direction:column; gap:7px; }
-nav button,.sidebar-bottom>button { -webkit-app-region:no-drag; border:0; color:#abc0b6; background:transparent; border-radius:12px; display:flex; gap:12px; align-items:center; height:46px; padding:0 14px; cursor:pointer; transition:.2s; width:100%; }
-nav button:hover,.sidebar-bottom>button:hover { color:white; background:#ffffff0c; }
-nav button.active,.sidebar-bottom>button.active { color:#fff; background:#ffffff14; box-shadow:inset 3px 0 #59d487; }
+.sidebar nav { display:flex; flex-direction:column; gap:7px; }
+.sidebar nav button,.sidebar-bottom>button { -webkit-app-region:no-drag; border:0; color:#abc0b6; background:transparent; border-radius:12px; display:flex; gap:12px; align-items:center; height:46px; padding:0 14px; cursor:pointer; transition:.2s; width:100%; }
+.sidebar nav button:hover,.sidebar-bottom>button:hover { color:white; background:#ffffff0c; }
+.sidebar nav button.active,.sidebar-bottom>button.active { color:#fff; background:#ffffff14; box-shadow:inset 3px 0 #59d487; }
 .sidebar-bottom { margin-top:auto; border-top:1px solid #ffffff12; padding-top:10px; }
 .device { display:flex; gap:10px; align-items:center; padding:20px 14px 0; }
 .device b,.device small { display:block; }.device b { color:#d8e3de; font-size:12px; font-weight:500; }.device small{ color:#718b7f; font-size:10px; margin-top:2px; }
