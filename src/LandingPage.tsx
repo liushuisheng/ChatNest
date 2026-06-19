@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import './landing.css'
 import packageInfo from '../package.json'
 
@@ -25,6 +26,18 @@ function Arrow() {
 }
 
 function LandingPage() {
+  useEffect(() => {
+    if (window.location.hostname !== 'liushuisheng.github.io') return
+
+    const analytics = document.createElement('script')
+    analytics.defer = true
+    analytics.src = 'https://static.cloudflareinsights.com/beacon.min.js'
+    analytics.dataset.cfBeacon = JSON.stringify({ token: 'b8b375d6319949e7b4b2fa52418c34f7' })
+    document.head.appendChild(analytics)
+
+    return () => analytics.remove()
+  }, [])
+
   const scrollToDownloads = () => document.querySelector('#downloads')?.scrollIntoView({ behavior: 'smooth' })
 
   return <div className="landing-page">
