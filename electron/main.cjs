@@ -24,6 +24,16 @@ const exec = (file, args = [], options = {}) => new Promise((resolve, reject) =>
 
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 const settingsPath = () => path.join(app.getPath('userData'), 'settings.json')
+const macAppInfoCache = new Map()
+
+function macLog(event, details = {}) {
+  if (process.platform !== 'darwin') return
+  try {
+    const logPath = path.join(app.getPath('userData'), 'logs', 'mac-runtime.log')
+    fs.mkdirSync(path.dirname(logPath), { recursive: true })
+    fs.appendFileSync(logPath, `${JSON.stringify({ at: new Date().toISOString(), version: app.getVersion(), event, ...details })}\n`)
+  } catch {}
+}
 
 function readSettings() {
   try { return JSON.parse(fs.readFileSync(settingsPath(), 'utf8')) } catch { return {} }
@@ -53,17 +63,40 @@ function resolveExecutable() {
   return detected ? { path: detected, source: 'auto' } : { path: '', source: 'missing' }
 }
 
+async function macAppInfo(appPath) {
+  if (macAppInfoCache.has(appPath)) return macAppInfoCache.get(appPath)
+  const readPlistValue = async (key) => {
+    try {
+      return await exec('/usr/libexec/PlistBuddy', ['-c', `Print :${key}`, path.join(appPath, 'Contents', 'Info.plist')])
+    } catch { return '' }
+  }
+  const executableName = await readPlistValue('CFBundleExecutable') || path.basename(appPath, '.app')
+  const info = {
+    executableName,
+    executablePath: path.join(appPath, 'Contents', 'MacOS', executableName),
+    bundleId: await readPlistValue('CFBundleIdentifier'),
+  }
+  macAppInfoCache.set(appPath, info)
+  return info
+}
+
+async function macProcessIds(appPath = resolveExecutable().path) {
+  const names = new Set(['WeChat', 'Weixin'])
+  if (appPath) names.add((await macAppInfo(appPath)).executableName)
+  const ids = new Set()
+  for (const name of names) {
+    try {
+      const output = await exec('/usr/bin/pgrep', ['-x', name])
+      output.split(/\r?\n/).filter(Boolean).forEach((pid) => ids.add(Number(pid)))
+    } catch {}
+  }
+  return [...ids].filter(Number.isFinite)
+}
+
 async function processCount() {
   try {
     if (process.platform === 'darwin') {
-      let count = 0
-      for (const name of ['WeChat', 'Weixin']) {
-        try {
-          const output = await exec('/usr/bin/pgrep', ['-x', name])
-          count += output ? output.split(/\r?\n/).filter(Boolean).length : 0
-        } catch {}
-      }
-      return count
+      return (await macProcessIds()).length
     }
     // Modern Weixin creates several same-name plugin processes for one
     // account. Count only roots whose parent is not another WeChat process;
@@ -79,20 +112,71 @@ async function status() {
 }
 
 function startDetached(executable) {
-  if (process.platform === 'darwin') {
-    const child = spawn('/usr/bin/open', ['-n', executable], { detached: true, stdio: 'ignore' })
-    child.unref()
-    return
-  }
   const child = spawn(executable, [], { detached: true, stdio: 'ignore', windowsHide: false })
   child.unref()
+}
+
+function spawnMac(file, args, event, options = {}) {
+  const child = spawn(file, args, { detached: true, stdio: 'ignore', ...options })
+  child.once('error', (error) => macLog(`${event}-error`, { message: error.message }))
+  child.unref()
+  macLog(event, { file, args, pid: child.pid || null })
+  return child
+}
+
+async function launchMacPrimary(appPath) {
+  spawnMac('/usr/bin/open', [appPath], 'primary-launch-requested')
+}
+
+async function launchMacAdditional(appPath) {
+  const info = await macAppInfo(appPath)
+  if (!fs.existsSync(info.executablePath)) throw new Error('微信应用内的启动程序不存在。')
+  spawnMac(info.executablePath, [], 'additional-launch-requested', { cwd: path.dirname(info.executablePath) })
+}
+
+async function waitForMacCount(minimum, timeoutMs = 12000) {
+  const startedAt = Date.now()
+  let stableSamples = 0
+  let lastIds = []
+  while (Date.now() - startedAt < timeoutMs) {
+    lastIds = await macProcessIds()
+    stableSamples = lastIds.length >= minimum ? stableSamples + 1 : 0
+    if (stableSamples >= 2) {
+      macLog('process-count-stable', { minimum, pids: lastIds })
+      return lastIds.length
+    }
+    await wait(500)
+  }
+  macLog('process-count-timeout', { minimum, pids: lastIds })
+  return lastIds.length
+}
+
+async function waitForMacExit(timeoutMs = 8000) {
+  const startedAt = Date.now()
+  let lastIds = []
+  while (Date.now() - startedAt < timeoutMs) {
+    lastIds = await macProcessIds()
+    if (lastIds.length === 0) {
+      macLog('processes-exited')
+      return true
+    }
+    await wait(400)
+  }
+  macLog('process-exit-timeout', { pids: lastIds })
+  return false
 }
 
 async function quitAll() {
   try {
     if (process.platform === 'darwin') {
-      await exec('/usr/bin/osascript', ['-e', 'tell application "WeChat" to quit'])
-      try { await exec('/usr/bin/osascript', ['-e', 'tell application "Weixin" to quit']) } catch {}
+      const target = resolveExecutable()
+      const info = target.path ? await macAppInfo(target.path) : null
+      if (info?.bundleId) await exec('/usr/bin/osascript', ['-e', `tell application id "${info.bundleId}" to quit`])
+      else {
+        try { await exec('/usr/bin/osascript', ['-e', 'tell application "WeChat" to quit']) } catch {}
+        try { await exec('/usr/bin/osascript', ['-e', 'tell application "Weixin" to quit']) } catch {}
+      }
+      await waitForMacExit()
     } else {
       try { await exec('taskkill.exe', ['/IM', 'WeChat.exe', '/T', '/F']) } catch {}
       try { await exec('taskkill.exe', ['/IM', 'Weixin.exe', '/T', '/F']) } catch {}
@@ -111,12 +195,27 @@ async function launchPair(restart) {
   if (before.running && !restart) {
     return { ok: false, code: 'ALREADY_RUNNING', message: '微信正在运行。要创建两个实例，需要先退出当前微信。', status: before }
   }
-  if (before.running) await quitAll()
+  if (before.running) {
+    const quitResult = await quitAll()
+    if (quitResult.status.running) {
+      return { ok: false, code: 'QUIT_FAILED', message: '微信仍在运行，请完全退出后重试。', status: quitResult.status }
+    }
+  }
   try {
-    startDetached(target.path)
-    startDetached(target.path)
-    await wait(2200)
+    if (process.platform === 'darwin') {
+      macLog('pair-launch-started', { restart: Boolean(restart), beforeCount: before.count, appPath: target.path })
+      await launchMacPrimary(target.path)
+      if (await waitForMacCount(1) < 1) throw new Error('第一个微信实例未能稳定启动。')
+      await wait(1000)
+      await launchMacAdditional(target.path)
+      await waitForMacCount(2)
+    } else {
+      startDetached(target.path)
+      startDetached(target.path)
+      await wait(2200)
+    }
     const after = await status()
+    macLog('pair-launch-finished', { afterCount: after.count, pids: process.platform === 'darwin' ? await macProcessIds(target.path) : [] })
     return {
       ok: after.count >= 2,
       code: after.count >= 2 ? 'PAIR_STARTED' : 'PARTIAL',
@@ -132,7 +231,19 @@ async function focusWeChat() {
   try {
     if (await processCount() === 0) return { ok: false, message: '当前没有正在运行的微信实例。' }
     if (process.platform === 'darwin') {
-      await exec('/usr/bin/osascript', ['-e', 'tell application "WeChat" to activate'])
+      const target = resolveExecutable()
+      if (!target.path) return { ok: false, message: '未找到微信，请先选择微信安装位置。' }
+      const beforeIds = await macProcessIds(target.path)
+      const info = await macAppInfo(target.path)
+      if (info.bundleId) {
+        await exec('/usr/bin/osascript', ['-e', `tell application id "${info.bundleId}"`, '-e', 'reopen', '-e', 'activate', '-e', 'end tell'])
+      } else {
+        await exec('/usr/bin/open', [target.path])
+      }
+      await wait(700)
+      const afterIds = await macProcessIds(target.path)
+      macLog('focus-request-finished', { beforePids: beforeIds, afterPids: afterIds, bundleId: info.bundleId })
+      if (afterIds.length === 0) return { ok: false, message: '微信进程已退出，未能恢复窗口。' }
     } else {
       const helper = app.isPackaged ? path.join(process.resourcesPath, 'focus-wechat.ps1') : path.join(__dirname, 'focus-wechat.ps1')
       const result = await exec('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', helper])
@@ -241,9 +352,17 @@ ipcMain.handle('wechat:launch-one', async () => {
   if (!target.path) return { ok: false, message: '未找到微信，请先选择微信安装位置。' }
   try {
     const before = await status()
-    startDetached(target.path)
-    await wait(1800)
+    if (process.platform === 'darwin') {
+      macLog('single-launch-started', { beforeCount: before.count, appPath: target.path })
+      if (before.count === 0) await launchMacPrimary(target.path)
+      else await launchMacAdditional(target.path)
+      await waitForMacCount(before.count + 1)
+    } else {
+      startDetached(target.path)
+      await wait(1800)
+    }
     const after = await status()
+    macLog('single-launch-finished', { beforeCount: before.count, afterCount: after.count })
     const created = after.count > before.count
     return {
       ok: created,
