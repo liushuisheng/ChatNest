@@ -24,7 +24,7 @@ function Icon({ name, size = 20 }: { name: IconName; size?: number }) {
 function App() {
   const chatnest = window.chatnest!
   const [overview, setOverview] = useState<Overview | null>(null)
-  const [busy, setBusy] = useState(false)
+  const [busyActions, setBusyActions] = useState<Set<string>>(() => new Set())
   const [toast, setToast] = useState<{ text: string; error?: boolean } | null>(null)
   const [confirmRestart, setConfirmRestart] = useState(false)
   const [page, setPage] = useState<'home' | 'settings' | 'help'>('home')
@@ -44,14 +44,20 @@ function App() {
     setToast({ text, error }); setTimeout(() => setToast(null), 3600)
   }
 
-  const act = async (action: () => Promise<ActionResult>) => {
-    setBusy(true)
+  const act = async (key: string, action: () => Promise<ActionResult>) => {
+    setBusyActions((current) => new Set(current).add(key))
     try {
       const result = await action()
       if (result.code === 'ALREADY_RUNNING') { setConfirmRestart(true); return }
       notify(result.message || (result.ok ? '操作完成' : '操作未完成'), !result.ok)
       await refresh()
-    } finally { setBusy(false) }
+    } finally {
+      setBusyActions((current) => {
+        const next = new Set(current)
+        next.delete(key)
+        return next
+      })
+    }
   }
 
   const choose = async () => {
@@ -64,6 +70,7 @@ function App() {
   const { status, executable } = overview
   const healthy = executable.source !== 'missing'
   const stateLabel = status.isPair ? '双实例运行中' : status.running ? `${status.count} 个实例运行中` : '当前未运行'
+  const globalBusy = busyActions.has('pair') || busyActions.has('quit')
 
   return (
     <div className="app-shell">
@@ -87,27 +94,27 @@ function App() {
 
           <section className="hero-card">
             <div className="hero-copy"><div className={`status-pill ${status.running ? 'online' : ''}`}><span/>{stateLabel}</div><h2>一键开启两个微信</h2><p>{overview.platform === 'darwin' ? '通过 macOS 原生新实例能力，分别打开两个微信窗口。' : '同时唤起两个独立微信进程，分别扫码登录工作号与生活号。'}</p>
-              <div className="hero-actions"><button className="primary" disabled={busy || !healthy} onClick={() => act(() => window.chatnest.launchPair(false))}><Icon name="play"/>{busy ? '正在启动…' : status.isPair ? '已开启双实例' : '立即双开'}</button>{status.running && <button className="secondary" onClick={() => act(window.chatnest.focus)}><Icon name="focus"/>显示微信</button>}</div>
+              <div className="hero-actions"><button className="primary" disabled={busyActions.size > 0 || !healthy} onClick={() => act('pair', () => window.chatnest.launchPair(false))}><Icon name="play"/>{busyActions.has('pair') ? '正在启动…' : status.isPair ? '已开启双实例' : '立即双开'}</button>{status.running && <button className="secondary" disabled={globalBusy || busyActions.has('hero-focus')} onClick={() => act('hero-focus', window.chatnest.focus)}><Icon name="focus"/>显示微信</button>}</div>
             </div>
             <div className="nest-visual"><div className="orbit one"/><div className="orbit two"/><div className="avatar work"><span>工</span><i/></div><div className="avatar life"><span>生</span><i/></div><div className="nest-center"><Icon name="wechat" size={33}/></div></div>
           </section>
 
           <div className="section-title"><div><h3>实例状态</h3><p>ChatNest 会自动感知微信进程状态</p></div><span>每 3.5 秒自动刷新</span></div>
           <section className="instance-grid">
-            {[0, 1].map((index) => { const online = status.count > index; return <article className="instance-card" key={index}>
+            {[0, 1].map((index) => { const online = status.count > index; const actionKey = `instance-${index}`; const instanceBusy = busyActions.has(actionKey); return <article className="instance-card" key={index}>
               <div className="instance-top"><div className={`instance-logo ${index ? 'orange' : ''}`}><Icon name="wechat" size={26}/></div><span className={`tag ${online ? 'online' : ''}`}>{online ? '运行中' : '未启动'}</span></div>
               <div><h4>{index === 0 ? '工作微信' : '生活微信'}</h4><p>{online ? '微信实例运行正常' : index === 0 ? '用于客户、同事与工作群' : '用于家人、朋友与日常社交'}</p></div>
-              <button disabled={busy} onClick={() => act(online ? window.chatnest.focus : window.chatnest.launchOne)}>{online ? <><Icon name="focus" size={18}/>打开窗口</> : <><Icon name="play" size={17}/>{busy ? '启动中…' : '立即启动'}</>}</button>
+              <button disabled={globalBusy || instanceBusy} onClick={() => act(actionKey, online ? window.chatnest.focus : window.chatnest.launchOne)}>{online ? <><Icon name="focus" size={18}/>{instanceBusy ? '正在打开…' : '打开窗口'}</> : <><Icon name="play" size={17}/>{instanceBusy ? '启动中…' : '立即启动'}</>}</button>
             </article> })}
           </section>
-          {status.running && <button className="quit-link" onClick={() => act(window.chatnest.quitAll)}><Icon name="power" size={17}/>退出全部微信</button>}
+          {status.running && <button className="quit-link" disabled={busyActions.size > 0} onClick={() => act('quit', window.chatnest.quitAll)}><Icon name="power" size={17}/>退出全部微信</button>}
         </>}
 
         {page === 'settings' && <Settings overview={overview} choose={choose} refresh={refresh} notify={notify}/>} 
         {page === 'help' && <Help platform={overview.platform}/>} 
       </main>
 
-      {confirmRestart && <div className="modal-backdrop"><div className="modal"><div className="modal-icon"><Icon name="refresh" size={24}/></div><h3>需要重启当前微信</h3><p>微信已经在运行。为确保双开成功，ChatNest 需要先退出当前微信，再连续启动两个实例。请先保存未发送的内容。</p><div><button className="secondary" onClick={() => setConfirmRestart(false)}>取消</button><button className="primary danger" onClick={() => { setConfirmRestart(false); act(() => window.chatnest.launchPair(true)) }}>退出并双开</button></div></div></div>}
+      {confirmRestart && <div className="modal-backdrop"><div className="modal"><div className="modal-icon"><Icon name="refresh" size={24}/></div><h3>需要重启当前微信</h3><p>微信已经在运行。为确保双开成功，ChatNest 需要先退出当前微信，再连续启动两个实例。请先保存未发送的内容。</p><div><button className="secondary" onClick={() => setConfirmRestart(false)}>取消</button><button className="primary danger" onClick={() => { setConfirmRestart(false); act('pair', () => window.chatnest.launchPair(true)) }}>退出并双开</button></div></div></div>}
       {toast && <div className={`toast ${toast.error ? 'error' : ''}`}><Icon name={toast.error ? 'warning' : 'check'} size={18}/>{toast.text}</div>}
     </div>
   )
