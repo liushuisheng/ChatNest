@@ -140,6 +140,7 @@ async function focusWeChat() {
 }
 
 function createWindow() {
+  const appIcon = path.join(__dirname, '..', 'build', 'icon.png')
   mainWindow = new BrowserWindow({
     width: 1120,
     height: 760,
@@ -148,6 +149,7 @@ function createWindow() {
     titleBarStyle: 'hiddenInset',
     autoHideMenuBar: true,
     backgroundColor: '#f6f7f4',
+    icon: appIcon,
     show: false,
     webPreferences: { preload: path.join(__dirname, 'preload.cjs'), contextIsolation: true, nodeIntegration: false },
   })
@@ -158,6 +160,7 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
+  if (process.platform === 'darwin') app.dock.setIcon(path.join(__dirname, '..', 'build', 'icon.png'))
   Menu.setApplicationMenu(null)
   createWindow()
   app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) createWindow() })
