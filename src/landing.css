@@ -25,6 +25,7 @@ body:has(.landing-page){min-width:0;overflow:auto;background:#f7f8f3}
 .landing-page .download-card small { color:#81b098; font-size:11px; }
 .landing-page .download-card h3 { font-size:19px; }
 .landing-page .download-card p { color:#9bb3a7; font-size:13px; }
+.landing-page .download-count { display:block; margin-top:8px; color:#8ee0b0; font-size:12px; font-weight:600; }
 .landing-page .release-note { color:#88a293; font-size:12px; }
 .landing-page .privacy-banner span { font-size:11px; }
 .landing-page .privacy-banner h2 { font-size:28px; }
