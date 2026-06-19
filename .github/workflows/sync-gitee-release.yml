@@ -1,0 +1,33 @@
+name: Sync release to Gitee
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag to copy from GitHub
+        required: true
+        default: v0.2.4
+
+permissions:
+  contents: read
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag }}
+      - name: Download GitHub release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: gh release download "${{ inputs.tag }}" --dir assets
+      - name: Publish Gitee release
+        env:
+          GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}
+          GITEE_OWNER: liushuisheng
+          GITEE_REPO: ChatNest
+          RELEASE_TAG: ${{ inputs.tag }}
+          TARGET_COMMITISH: ${{ inputs.tag }}
+        run: node .github/scripts/publish-gitee-release.mjs assets
