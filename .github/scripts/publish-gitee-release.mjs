@@ -23,8 +23,12 @@ async function api(url, options = {}) {
 
 async function findOrCreateRelease() {
   const response = await fetch(`${apiBase}/releases/tags/${encodeURIComponent(tag)}`)
-  if (response.ok) return response.json()
-  if (response.status !== 404) throw new Error(`Unable to query Gitee release: ${response.status}`)
+  if (response.ok) {
+    const existingRelease = await response.json()
+    if (existingRelease?.id) return existingRelease
+  } else if (response.status !== 404) {
+    throw new Error(`Unable to query Gitee release: ${response.status}`)
+  }
 
   const body = new URLSearchParams({
     access_token: token,
