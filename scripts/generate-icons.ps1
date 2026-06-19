@@ -5,6 +5,8 @@ Add-Type -AssemblyName System.Drawing
 
 $OutputDirectory = [System.IO.Path]::GetFullPath($OutputDirectory)
 [System.IO.Directory]::CreateDirectory($OutputDirectory) | Out-Null
+$PublicDirectory = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\public'))
+[System.IO.Directory]::CreateDirectory($PublicDirectory) | Out-Null
 
 function New-RoundedRectanglePath {
   param([float]$X, [float]$Y, [float]$Width, [float]$Height, [float]$Radius)
@@ -81,6 +83,7 @@ function Write-BigEndianInt32 {
 
 $png1024 = Get-PngBytes 1024
 [System.IO.File]::WriteAllBytes((Join-Path $OutputDirectory 'icon.png'), $png1024)
+[System.IO.File]::WriteAllBytes((Join-Path $PublicDirectory 'favicon.png'), $png1024)
 
 $icoSizes = @(16, 24, 32, 48, 64, 128, 256)
 $icoImages = @($icoSizes | ForEach-Object { Get-PngBytes $_ })
@@ -134,4 +137,4 @@ for ($index = 0; $index -lt $icnsEntries.Count; $index++) {
 }
 $icnsStream.Dispose()
 
-Write-Host "Generated icon.png, icon.ico, and icon.icns in $OutputDirectory"
+Write-Host "Generated application icons in $OutputDirectory and public/favicon.png"
