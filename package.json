@@ -1,6 +1,6 @@
 {
   "name": "chatnest",
-  "version": "0.1.2",
+  "version": "0.2.0",
   "private": true,
   "author": "ChatNest Team",
   "description": "ChatNest - a calm desktop launcher for multiple WeChat sessions",
@@ -53,14 +53,19 @@
     },
     "mac": {
       "icon": "build/icon.icns",
-      "target": ["dmg", "zip"],
+      "target": [
+        "dmg",
+        "zip"
+      ],
       "category": "public.app-category.productivity"
     },
-    "publish": [{
-      "provider": "github",
-      "owner": "liushuisheng",
-      "repo": "ChatNest"
-    }],
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "liushuisheng",
+        "repo": "ChatNest"
+      }
+    ],
     "nsis": {
       "installerIcon": "build/icon.ico",
       "uninstallerIcon": "build/icon.ico",
