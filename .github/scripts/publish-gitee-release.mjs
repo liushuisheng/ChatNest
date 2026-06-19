@@ -1,4 +1,5 @@
-import { readdir, readFile } from 'node:fs/promises'
+import { readdir, stat } from 'node:fs/promises'
+import { spawn } from 'node:child_process'
 import path from 'node:path'
 
 const token = process.env.GITEE_TOKEN
@@ -44,24 +45,43 @@ async function findOrCreateRelease() {
 const release = await findOrCreateRelease()
 const existing = await api(`${apiBase}/releases/${release.id}/attach_files`)
 const existingNames = new Set(existing.map((item) => item.name))
-const files = (await readdir(assetDirectory, { withFileTypes: true }))
-  .filter((entry) => entry.isFile())
-  .map((entry) => entry.name)
-  .sort()
+const entries = (await readdir(assetDirectory, { withFileTypes: true })).filter((entry) => entry.isFile())
+const files = await Promise.all(entries.map(async (entry) => ({
+  name: entry.name,
+  size: (await stat(path.join(assetDirectory, entry.name))).size,
+})))
+files.sort((left, right) => left.size - right.size || left.name.localeCompare(right.name))
 
 if (files.length === 0) throw new Error(`No release assets found in ${assetDirectory}`)
 
-for (const name of files) {
+function uploadFile(filePath) {
+  return new Promise((resolve, reject) => {
+    const child = spawn('curl', [
+      '--fail-with-body', '--silent', '--show-error',
+      '--connect-timeout', '30', '--max-time', '1800',
+      '--request', 'POST',
+      '--form', `access_token=${token}`,
+      '--form', `file=@${filePath}`,
+      `${apiBase}/releases/${release.id}/attach_files`,
+    ])
+    let output = ''
+    child.stdout.on('data', (chunk) => { output += chunk })
+    child.stderr.on('data', (chunk) => { output += chunk })
+    child.on('error', reject)
+    child.on('close', (code) => {
+      if (code === 0) resolve()
+      else reject(new Error(`Gitee attachment upload failed (${code}): ${output.slice(-1000)}`))
+    })
+  })
+}
+
+for (const { name, size } of files) {
   if (existingNames.has(name)) {
     console.log(`Skipping existing Gitee asset: ${name}`)
     continue
   }
-  const bytes = await readFile(path.join(assetDirectory, name))
-  const form = new FormData()
-  form.append('access_token', token)
-  form.append('file', new Blob([bytes]), name)
-  console.log(`Uploading Gitee asset: ${name}`)
-  await api(`${apiBase}/releases/${release.id}/attach_files`, { method: 'POST', body: form })
+  console.log(`Uploading Gitee asset: ${name} (${Math.ceil(size / 1024 / 1024)} MB)`)
+  await uploadFile(path.join(assetDirectory, name))
 }
 
 console.log(`Gitee release is ready: https://gitee.com/${owner}/${repo}/releases/tag/${tag}`)
