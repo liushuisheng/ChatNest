@@ -3,7 +3,14 @@ import './landing.css'
 import packageInfo from '../package.json'
 
 const version = packageInfo.version
-const releaseBase = `https://github.com/liushuisheng/ChatNest/releases/download/v${version}`
+const githubReleaseBase = `https://github.com/liushuisheng/ChatNest/releases/download/v${version}`
+const giteeReleaseBase = `https://gitee.com/liushuisheng/ChatNest/releases/download/v${version}`
+const expectedGiteeFiles = [
+  `ChatNest-${version}-win-x64.exe`,
+  `ChatNest-${version}-win-arm64.exe`,
+  `ChatNest-${version}-mac-arm64.dmg`,
+  `ChatNest-${version}-mac-x64.dmg`,
+]
 
 const downloads = [
   { platform: 'Windows', arch: 'x64', note: '适用于大多数 Windows 电脑', file: `ChatNest-${version}-win-x64.exe`, icon: 'windows' },
@@ -27,6 +34,8 @@ function Arrow() {
 
 function LandingPage() {
   const [totalDownloadCount, setTotalDownloadCount] = useState(99)
+  const [releaseBase, setReleaseBase] = useState(githubReleaseBase)
+  const [allReleasesUrl, setAllReleasesUrl] = useState('https://github.com/liushuisheng/ChatNest/releases/latest')
 
   useEffect(() => {
     if (window.location.hostname !== 'liushuisheng.github.io') return
@@ -38,6 +47,47 @@ function LandingPage() {
     document.head.appendChild(analytics)
 
     return () => analytics.remove()
+  }, [])
+
+  useEffect(() => {
+    const controller = new AbortController()
+    const timeout = window.setTimeout(() => controller.abort(), 4000)
+
+    const selectReleaseSource = async () => {
+      let isMainlandChina = false
+      try {
+        const response = await fetch('https://api.country.is/', { signal: controller.signal })
+        if (!response.ok) throw new Error(`Country API returned ${response.status}`)
+        const location = await response.json() as { country?: string }
+        isMainlandChina = location.country === 'CN'
+      } catch {
+        isMainlandChina = Intl.DateTimeFormat().resolvedOptions().timeZone === 'Asia/Shanghai'
+      }
+
+      if (!isMainlandChina) return
+
+      try {
+        const releaseResponse = await fetch(`https://gitee.com/api/v5/repos/liushuisheng/ChatNest/releases/tags/v${version}`, { signal: controller.signal })
+        if (!releaseResponse.ok) return
+        const release = await releaseResponse.json() as { id?: number } | null
+        if (!release?.id) return
+        const assetsResponse = await fetch(`https://gitee.com/api/v5/repos/liushuisheng/ChatNest/releases/${release.id}/attach_files`, { signal: controller.signal })
+        if (!assetsResponse.ok) return
+        const assets = await assetsResponse.json() as Array<{ name?: string }>
+        const names = new Set(assets.map((asset) => asset.name))
+        if (!expectedGiteeFiles.every((name) => names.has(name))) return
+        setReleaseBase(giteeReleaseBase)
+        setAllReleasesUrl(`https://gitee.com/liushuisheng/ChatNest/releases/tag/v${version}`)
+      } catch {
+        // GitHub remains the safe fallback when Gitee availability cannot be verified.
+      }
+    }
+
+    void selectReleaseSource().finally(() => window.clearTimeout(timeout))
+    return () => {
+      window.clearTimeout(timeout)
+      controller.abort()
+    }
   }, [])
 
   useEffect(() => {
@@ -107,7 +157,7 @@ function LandingPage() {
             <div><small>{item.platform}</small><h3>{item.arch}</h3><p>{item.note}</p></div><span className="card-arrow"><Arrow/></span>
           </a>)}
         </div>
-        <p className="release-note">不确定该选哪个？Windows 用户通常选择 x64，M 系列 Mac 请选择 Apple 芯片。<a href="https://github.com/liushuisheng/ChatNest/releases/latest" target="_blank" rel="noreferrer">查看全部发布文件 →</a></p>
+        <p className="release-note">不确定该选哪个？Windows 用户通常选择 x64，M 系列 Mac 请选择 Apple 芯片。<a href={allReleasesUrl} target="_blank" rel="noreferrer">查看全部发布文件 →</a></p>
       </section>
 
       <section className="privacy-banner"><div><Mark size={54}/></div><div><span>安心一点</span><h2>你的聊天，始终只属于你。</h2><p>ChatNest 不注入、不修改微信，也不接触任何账号信息与聊天内容。它只是安静地帮你打开和管理微信进程。</p></div></section>

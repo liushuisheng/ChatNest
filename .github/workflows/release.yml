@@ -89,7 +89,12 @@ jobs:
   publish:
     needs: package
     runs-on: ubuntu-latest
+    env:
+      GITEE_ENABLED: ${{ secrets.GITEE_TOKEN != '' }}
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
       - name: Download all installers
         uses: actions/download-artifact@v4
         with:
@@ -97,8 +102,37 @@ jobs:
           path: assets
           merge-multiple: true
 
+      - name: Check Gitee attachment limit
+        id: gitee-size
+        run: node .github/scripts/check-release-size.mjs assets
+
       - name: Create GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
         run: gh release create "${{ github.ref_name }}" assets/* --verify-tag --generate-notes --title "ChatNest ${{ github.ref_name }}"
+
+      - name: Warn when Gitee token is unavailable
+        if: steps.gitee-size.outputs.eligible == 'true' && env.GITEE_ENABLED != 'true'
+        run: echo "::warning title=Gitee sync skipped::GITEE_TOKEN is not configured; GitHub Release was published successfully."
+
+      - name: Sync release tag to Gitee
+        if: steps.gitee-size.outputs.eligible == 'true' && env.GITEE_ENABLED == 'true'
+        env:
+          GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}
+          GITEE_USER: liushuisheng
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          git remote add gitee https://gitee.com/liushuisheng/ChatNest.git
+          git config --global credential.helper "!f() { echo username=$GITEE_USER; echo password=$GITEE_TOKEN; }; f"
+          git push gitee "refs/tags/$RELEASE_TAG:refs/tags/$RELEASE_TAG"
+
+      - name: Publish Gitee installers
+        if: steps.gitee-size.outputs.eligible == 'true' && env.GITEE_ENABLED == 'true'
+        env:
+          GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}
+          GITEE_OWNER: liushuisheng
+          GITEE_REPO: ChatNest
+          RELEASE_TAG: ${{ github.ref_name }}
+          TARGET_COMMITISH: ${{ github.sha }}
+        run: node .github/scripts/publish-gitee-installers.mjs assets
