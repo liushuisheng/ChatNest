@@ -1,10 +1,11 @@
-const { app, BrowserWindow, dialog, ipcMain, shell, Menu } = require('electron')
+const { app, BrowserWindow, dialog, ipcMain, shell, Menu, Tray, nativeImage } = require('electron')
 const { autoUpdater } = require('electron-updater')
 const { execFile, spawn } = require('node:child_process')
 const fs = require('node:fs')
 const path = require('node:path')
 
 let mainWindow
+let tray
 let updatePreparation
 let updateReadyVersion = ''
 
@@ -192,15 +193,45 @@ function createWindow() {
   })
   mainWindow.setMenuBarVisibility(false)
   mainWindow.once('ready-to-show', () => mainWindow.show())
+  mainWindow.on('minimize', (event) => {
+    event.preventDefault()
+    mainWindow.hide()
+  })
   if (app.isPackaged) mainWindow.loadFile(path.join(__dirname, '..', 'dist', 'index.html'))
   else mainWindow.loadURL('http://localhost:5173')
+}
+
+function showMainWindow() {
+  if (!mainWindow || mainWindow.isDestroyed()) {
+    createWindow()
+    return
+  }
+  if (mainWindow.isMinimized()) mainWindow.restore()
+  mainWindow.show()
+  mainWindow.focus()
+}
+
+function createTray() {
+  if (tray) return
+  const iconSize = process.platform === 'darwin' ? 20 : 16
+  const trayIcon = nativeImage.createFromPath(path.join(__dirname, '..', 'build', 'icon.png')).resize({ width: iconSize, height: iconSize })
+  tray = new Tray(trayIcon)
+  tray.setToolTip('ChatNest')
+  tray.setContextMenu(Menu.buildFromTemplate([
+    { label: '打开 ChatNest', click: showMainWindow },
+    { type: 'separator' },
+    { label: '退出 ChatNest', click: () => app.quit() },
+  ]))
+  tray.on('click', showMainWindow)
+  tray.on('double-click', showMainWindow)
 }
 
 app.whenReady().then(() => {
   if (process.platform === 'darwin') app.dock.setIcon(path.join(__dirname, '..', 'build', 'icon.png'))
   Menu.setApplicationMenu(null)
   createWindow()
-  app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) createWindow() })
+  createTray()
+  app.on('activate', showMainWindow)
 })
 app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit() })
 
